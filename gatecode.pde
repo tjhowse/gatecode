@@ -15,6 +15,10 @@
 	#define PIN_MOTOR1 1
 	#define PIN_BUTTON 2
 	#define PIN_BUZZER 3
+	#define PIN_REMOTEA 4
+	#define PIN_REMOTEB 5
+	#define PIN_REMOTEC 6
+	#define PIN_REMOTED 7
 #else
 	#define PIN_HALL A0
 	#define PIN_MOTOR0 2
@@ -22,6 +26,11 @@
 	#define PIN_BUTTON 12
 	#define PIN_BUZZER 13
 #endif
+
+#define BUTTON_OPEN PIN_REMOTEA
+#define BUTTON_CLOSE PIN_REMOTEC
+#define BUTTON_BUZZ PIN_REMOTED
+#define BUTTON_STOP PIN_REMOTEB
 
 #define BUZZ_DURATION 1000
 
@@ -34,14 +43,19 @@
 #define OPEN 1
 #define CLOSED 0
 
+#define DOTLCOUNT 300000
+#define DOTLATTEMPTLIMIT 2
 
 #define MOTOR_POLARITY LOW
 
 int hallVal;
 unsigned long moveStartTime;
+unsigned long dotl_time;
 int gate_position;
 int prev_gate_position;
 int move_direction;
+int remote_button;
+int dotl_attempts;
 
 void setup()
 {
@@ -50,6 +64,10 @@ void setup()
 	pinMode(PIN_MOTOR1, OUTPUT);
 	pinMode(PIN_BUTTON, INPUT);
 	pinMode(PIN_HALL, INPUT);
+	pinMode(PIN_REMOTEA, INPUT);
+	pinMode(PIN_REMOTEB, INPUT);
+	pinMode(PIN_REMOTEC, INPUT);
+	pinMode(PIN_REMOTED, INPUT);	
 	
 	digitalWrite(PIN_BUTTON, HIGH);
 	Serial.begin(9600);
@@ -75,6 +93,8 @@ void loop()
 			}
 		}
 	}
+	check_remote();
+	check_dotl();
 	//set_close();
 	update_gate_position();
 	delay(50);
@@ -104,6 +124,12 @@ void open_gate()
 		if (is_button())
 		{
 			Serial.println("Stopped: Button");
+			move_direction = CLOSED;
+			break;
+		}
+		if (is_remote_stop())
+		{
+			Serial.println("Stopped: Remote");
 			move_direction = CLOSED;
 			break;
 		}
@@ -138,6 +164,12 @@ void close_gate()
 		if (is_button())
 		{
 			Serial.println("Stopped: Button");
+			move_direction = OPEN;
+			break;
+		}
+		if (is_remote_stop())
+		{
+			Serial.println("Stopped: Remote");
 			move_direction = OPEN;
 			break;
 		}
@@ -186,6 +218,25 @@ int is_button()
 	return !digitalRead(PIN_BUTTON);
 }
 
+int check_remote()
+{
+	if (!digitalRead(BUTTON_STOP))
+	{
+		set_free();
+	} else if (!digitalRead(BUTTON_CLOSE)) {
+		close_gate();
+	} else if (!digitalRead(BUTTON_OPEN)) {
+		open_gate();
+	} else if (!digitalRead(BUTTON_BUZZ)) {
+		buzz();
+	}
+}
+int is_remote_stop()
+{
+	// Checks to see if button B is pressed
+	return !digitalRead(BUTTON_STOP);
+}
+	
 int is_closed()
 {
 	return ((is_magnet()-1) == CLOSED);
@@ -194,6 +245,16 @@ int is_closed()
 int is_open()
 {
 	return ((is_magnet()-1) == OPEN);
+}
+
+void check_dotl()
+{
+	if ((dotl_time > DOTLCOUNT) && (dotl_attempts <= DOTLATTEMPTLIMIT))
+	{
+		close_gate();
+		dotl_time = millis();
+		dotl_attempts++;
+	}
 }
 
 void update_gate_position()
@@ -217,12 +278,18 @@ void update_gate_position()
 				break;
 			case CLOSED:
 				Serial.println("Gate is closed");
+				dotl_time = 0;
+				dotl_attempts = 0;
 				break;
 			case HALFWAY:
 				Serial.println("Gate is halfway");
 				break;
 		}
-	}	
+	}
+	if ((prev_gate_position == CLOSED) && (gate_position != CLOSED))
+	{
+		dotl_time = millis();
+	}
 }
 
 int is_magnet()
