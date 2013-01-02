@@ -5,7 +5,7 @@
 
 #define NO_MAGNET 506
 #define NO_MAGNET_DEADBAND 3
-#define O_C_FLIPPER 1
+#define O_C_FLIPPER 0
 
 #define TEENSY
 
@@ -27,15 +27,15 @@
 
 #define MAGNET_MASK_DURATION 1000
 
-#define OPEN_TIMEOUT 10000
-#define CLOSE_TIMEOUT 10000
+#define OPEN_TIMEOUT 15000
+#define CLOSE_TIMEOUT 15000
 
 #define HALFWAY 2
 #define OPEN 1
 #define CLOSED 0
 
 
-#define MOTOR_POLARITY HIGH
+#define MOTOR_POLARITY LOW
 
 int hallVal;
 unsigned long moveStartTime;
