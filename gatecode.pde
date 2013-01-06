@@ -3,8 +3,10 @@
   
  */
 
-#define NO_MAGNET 506
-#define NO_MAGNET_DEADBAND 3
+#include <EEPROM.h>
+//#include "eepromanything.h"
+#define NO_MAGNET 505
+#define NO_MAGNET_DEADBAND 5
 #define O_C_FLIPPER 0
 
 #define TEENSY
@@ -43,7 +45,8 @@
 #define OPEN 1
 #define CLOSED 0
 
-#define DOTLCOUNT 300000
+//#define DOTLCOUNT 300000
+#define DOTLCOUNT 5000
 #define DOTLATTEMPTLIMIT 2
 
 #define MOTOR_POLARITY LOW
@@ -56,9 +59,11 @@ int prev_gate_position;
 int move_direction;
 int remote_button;
 int dotl_attempts;
+int i;
 
 void setup()
 {
+        int low, high;
 	pinMode(PIN_BUZZER, OUTPUT);
 	pinMode(PIN_MOTOR0, OUTPUT);
 	pinMode(PIN_MOTOR1, OUTPUT);
@@ -68,9 +73,19 @@ void setup()
 	pinMode(PIN_REMOTEB, INPUT);
 	pinMode(PIN_REMOTEC, INPUT);
 	pinMode(PIN_REMOTED, INPUT);	
-	
+
 	digitalWrite(PIN_BUTTON, HIGH);
+        digitalWrite(PIN_REMOTEA, HIGH);
+        digitalWrite(PIN_REMOTEB, HIGH);
+        digitalWrite(PIN_REMOTEC, HIGH);
+        digitalWrite(PIN_REMOTED, HIGH);
 	Serial.begin(9600);
+
+        buzz(300);
+        delay(100);
+        buzz(100);
+        delay(100);
+        buzz(400);
 }
 
 void loop()
@@ -85,7 +100,7 @@ void loop()
 		} else {
 			// If the gate is stuck halfway, drive in a direction opposite to the
 			// previous travel
-			if (move_direction == CLOSED)
+			if (move_direction == OPEN)
 			{
 				open_gate();
 			} else {
@@ -94,7 +109,7 @@ void loop()
 		}
 	}
 	check_remote();
-	check_dotl();
+	//check_dotl();
 	//set_close();
 	update_gate_position();
 	delay(50);
@@ -104,7 +119,7 @@ void open_gate()
 {
 	if (gate_position == OPEN) return;
 	Serial.println("Opening gate");
-	buzz();
+	buzz(BUZZ_DURATION);
 	set_open();
 	moveStartTime = millis();
 	delay(MAGNET_MASK_DURATION);
@@ -113,7 +128,9 @@ void open_gate()
 		if (is_magnet())
 		{
 			Serial.println("Stopped: Magnet");
-			break;
+                	set_free();
+			buzz(300);
+                        break;
 		}
 		if ((millis() - moveStartTime) > OPEN_TIMEOUT)
 		{
@@ -144,7 +161,7 @@ void close_gate()
 {
 	if (gate_position == CLOSED) return;
 	Serial.println("Closing gate");
-	buzz();
+	buzz(BUZZ_DURATION);
 	set_close();
 	moveStartTime = millis();
 	delay(MAGNET_MASK_DURATION);
@@ -153,6 +170,8 @@ void close_gate()
 		if (is_magnet())
 		{
 			Serial.println("Stopped: Magnet");
+                	set_free();
+			buzz(300);
 			break;
 		}
 		if ((millis() - moveStartTime) > CLOSE_TIMEOUT)
@@ -180,10 +199,10 @@ void close_gate()
 	delay(1000);
 }
 
-void buzz()
+void buzz(int duration)
 {
 	digitalWrite(PIN_BUZZER, HIGH);
-	delay(BUZZ_DURATION);
+	delay(duration);
 	digitalWrite(PIN_BUZZER, LOW);
 }
 
@@ -222,13 +241,17 @@ int check_remote()
 {
 	if (!digitalRead(BUTTON_STOP))
 	{
+                Serial.println("Remote: Stop");
 		set_free();
 	} else if (!digitalRead(BUTTON_CLOSE)) {
+                Serial.println("Remote: Close");
 		close_gate();
 	} else if (!digitalRead(BUTTON_OPEN)) {
+                Serial.println("Remote: Open");
 		open_gate();
 	} else if (!digitalRead(BUTTON_BUZZ)) {
-		buzz();
+                Serial.println("Remote: Buzz");
+		buzz(BUZZ_DURATION);
 	}
 }
 int is_remote_stop()
@@ -249,7 +272,7 @@ int is_open()
 
 void check_dotl()
 {
-	if ((dotl_time > DOTLCOUNT) && (dotl_attempts <= DOTLATTEMPTLIMIT))
+	if (((dotl_time-millis()) > DOTLCOUNT) && (dotl_attempts <= DOTLATTEMPTLIMIT))
 	{
 		close_gate();
 		dotl_time = millis();
@@ -294,7 +317,7 @@ void update_gate_position()
 
 int is_magnet()
 {
-	hallVal = analogRead(A0);
+	hallVal = analogRead(PIN_HALL);
 	Serial.println(hallVal, DEC);
 
 	if (hallVal > (NO_MAGNET+NO_MAGNET_DEADBAND))		
