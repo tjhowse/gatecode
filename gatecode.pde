@@ -222,14 +222,14 @@ void set_close()
 
 void set_free()
 {
-	digitalWrite(PIN_MOTOR0, !MOTOR_POLARITY);
-	digitalWrite(PIN_MOTOR1, !MOTOR_POLARITY);
+	digitalWrite(PIN_MOTOR0, MOTOR_POLARITY);
+	digitalWrite(PIN_MOTOR1, MOTOR_POLARITY);
 }
 
 void set_brake()
 {
-	digitalWrite(PIN_MOTOR0, MOTOR_POLARITY);
-	digitalWrite(PIN_MOTOR1, MOTOR_POLARITY);
+	digitalWrite(PIN_MOTOR0, !MOTOR_POLARITY);
+	digitalWrite(PIN_MOTOR1, !MOTOR_POLARITY);
 }
 
 int is_button()
